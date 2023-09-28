@@ -1,6 +1,203 @@
 ---
-title: "Viz_and_EDA_1"
+title: "Viz and EDA 1"
 author: "Sarah Haberlack"
 date: "2023-09-28"
 output: github_document
 ---
+
+```{r}
+library(tidyverse)
+library(ggridges)
+```
+
+knitr::opts_chunk$set(
+  fig.width = .6,
+  fig.asp = .6,
+  out.width = "90%"
+)
+
+Get the data for plotting today.
+
+```{r}
+weather_df = 
+  rnoaa::meteo_pull_monitors(
+    c("USW00094728", "USW00022534", "USS0023B17S"),
+    var = c("PRCP", "TMIN", "TMAX"), 
+    date_min = "2021-01-01",
+    date_max = "2022-12-31") |>
+  mutate(
+    name = recode(
+      id, 
+      USW00094728 = "CentralPark_NY", 
+      USW00022534 = "Molokai_HI",
+      USS0023B17S = "Waterhole_WA"),
+    tmin = tmin / 10,
+    tmax = tmax / 10) |>
+  select(name, id, everything())
+```
+
+Let's make a plot!
+
+```{r}
+ggplot(weather_df, aes(x = tmin, y = tmax)) +
+  geom_point()
+```
+
+Pipes and stuff
+sh: you're saying "start with this df, then do something else"
+sh: save as a new df to condense your code, or to save plots.
+
+```{r}
+weather_df |>
+  filter(name == "CentralPark_NY") |>
+  ggplot(aes(x = tmin, y = tmax)) +
+  geom_point()
+
+ggp_nyc_weather =
+  weather_df |>
+  filter(name == "CentralPark_NY") |>
+  ggplot(aes(x = tmin, y = tmax)) +
+  geom_point()
+```
+
+## Fancy plot
+
+```{r}
+ggplot(weather_df, aes(x = tmin, y = tmax, color = name)) +
+  geom_point() +
+  geom_smooth()
+```
+
+Changing where the color is. In the below graph, only the points will be highlighted by color and the smooth line is not.
+
+```{r}
+ggplot(weather_df, aes(x = tmin, y = tmax)) +
+  geom_point(aes(color = name)) +
+  geom_smooth()
+```
+
+Taking away the points and just keeping the smooth line (practically, not a great idea but it is possible to do.)
+
+```{r}
+ggplot(weather_df, aes(x = tmin, y = tmax)) +
+  geom_smooth(se = FALSE)
+```
+
+Only in geom point, make 70% opaque and 30% solid.
+
+```{r}
+ggplot(weather_df, aes(x = tmin, y = tmax)) +
+  geom_point(aes(color = name), alpha= 0.3) +
+  geom_smooth()
+```
+
+```{r}
+ggplot(weather_df, aes(x = tmin, y = tmax, color = name)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth() +
+  facet_grid(. ~ name)
+```
+
+^ dot says "put everything on this row" and facet by name.
+automatically outputs based on alphabetical order of facets.
+
+Let's try a different plot. Temps are boring. Over that two-year period, what's the average temperature?
+
+```{r}
+ggplot(weather_df, aes(x = date, y = tmax, color = name)) +
+  geom_point(aes(size = prcp), alpha = 0.3) +
+  geom_smooth() +
+  facet_grid(. ~ name)
+```
+
+Try assigning a specific color (JG almost never sets color by hand in this way. )
+```{r}
+weather_df |>
+  filter(name == "CentralPark_NY") |>
+  ggplot(aes(x = date, y = tmax)) +
+  geom_point(color = "blue", size = .5)  
+```
+
+hex plot
+```{r}
+weather_df |>
+  ggplot(aes(x = tmin, y = tmax)) +
+  geom_hex()
+```
+
+line plot
+```{r}
+weather_df |>
+  filter(name == "Molokai_HI") |>
+  ggplot(aes(x = date, y = tmax)) +
+  geom_line(alpha = 0.5) +
+  geom_point(alpha = 0.5)
+```
+
+
+## Univariate plotting
+
+Histogram
+
+```{r}
+ggplot(weather_df, aes(x = tmax, fill = name)) +
+  geom_histogram(position = "dodge")
+```
+
+dodge bames the bars "avoid" each other instead of stacking on top of each other. but this looks confusing. to compare all this data, we'd rather just not use a histogram anymore to convey this data.
+
+let's use a density plot.
+
+```{r}
+ggplot(weather_df, aes(x = tmax, fill = name)) +
+  geom_density(alpha = 0.3, adjust = .5)
+```
+
+In a density plot, 
+adjust" makes everything a little LESS smooth < 1 and more smooth > 1.
+
+We can compare univariate distributions also by using BOXPLOTS.
+
+```{r}
+ggplot(weather_df, aes(y = tmax, x = name)) +
+  geom_boxplot()
+```
+
+Violin plots?
+
+```{r}
+ggplot(weather_df, aes(y = tmax, x = name)) +
+  geom_violin()
+```
+
+ridge plot
+
+```{r}
+ggplot(weather_df, aes(x = tmax, y = name)) +
+  geom_density_ridges()
+```
+
+^Quick way of looking at, e.g., 50 states at a time
+
+## saving and embedding plots
+
+```{r}
+ggp_weather =
+  weather_df |>
+  ggplot(aes(x = tmin, y = tmax)) +
+  geom_point()
+
+ggp_weather
+
+ggsave("results/ggp_weather.pdf", ggp_weather)
+```
+
+When we knit, the plots become embedded into this document. We ask, is this the right size? etc? R is making automatic rescaling choices.
+
+To change the scale of the plot being made,:
+
+```{r, fig.width = 12, fig.asp = .6}
+ggp_weather
+```
+
+fig.asp is "aspect ratio" in relation to the width
